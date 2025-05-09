@@ -5,17 +5,17 @@
 
 # Incident Investigation Report
 
-## 📘 Scenario:**
-During a routine performance review, a noticeable degradation in network performance was observed on several legacy systems within the 10.0.0.0/16 subnet. After eliminating the possibility of external DDoS activity, the security team began investigating potential internal causes. The current network configuration allows unrestricted internal traffic by default, and users have broad access to tools such as PowerShell and other potentially sensitive applications. Given these conditions, there is concern that a user may be conducting unauthorized activities—such as downloading large volumes of data or performing internal port scans—against other hosts on the local network.
+## 📘 Scenario:
+During a routine performance review, a noticeable degradation in network performance was observed on several legacy systems within the 10.0.0.0/16 subnet. After eliminating the possibility of external DDoS activity, the security team began investigating potential internal causes. The current network configuration allows unrestricted internal traffic by default, and users have broad access to tools such as PowerShell and other potentially sensitive applications. Given these conditions, there is concern that a user may be conducting unauthorized activities, such as downloading large volumes of data or performing internal port scans against other hosts on the local network.
 
 ---
 
 ## **📌 Incident Summary and Findings**
 
-🎯 Goal: Gather relevant data from logs, network traffic, and endpoints.
+- 🎯 Goal: Gather relevant data from logs, network traffic, and endpoints.
 Consider inspecting the logs for excessive successful/failed connections from any devices.  If discovered, pivot and inspect those devices for any suspicious file or process events.
-🔍 Activity: Ensure data is available from all key sources for analysis.
-📦 Log Tables to Analyze:
+- 🔍 Activity: Ensure data is available from all key sources for analysis.
+- 📦 Log Tables to Analyze:
 DeviceNetworkEvents
 DeviceFileEvents
 DeviceProcessEvents
@@ -37,10 +37,10 @@ DeviceProcessEvents
 ### **📅 Timeline Overview**
 
 1️⃣ Unusual Connection Failures Identified
-**🖥️ Host: maryanna-vm-mde was found failing several connection requests against another host on the same network**
-**📉 Behavior: Multiple failed connection attempts to itself and another internal host, suggesting internal scanning.**
+- **🖥️ Host: maryanna-vm-mde was found failing several connection requests against another host on the same network**
+- **📉 Behavior: Multiple failed connection attempts to itself and another internal host, suggesting internal scanning.**
 
-   **🔎 Detection Query (KQL):**
+**🔎 Detection Query (KQL):**
  ```kql
    DeviceNetworkEvents
    | where ActionType == "ConnectionFailed"
@@ -51,10 +51,10 @@ DeviceProcessEvents
 ![image](https://github.com/user-attachments/assets/2cdbed17-2008-497b-ad1e-fc404cfa8f80)
 
 
- **2️⃣ Process Behavior Review**
-   - **⚠️ Observation:** After observing failed connection requests from our suspected host (10.0.0.5) in chronological order, I noticed a port scan was taking place due to the sequential order of the ports. There were several por scans being conducted: 
+**2️⃣ Process Behavior Review**
+   - **⚠️ Observation:** After observing failed connection requests from our suspected host (10.0.0.5) in chronological order, I noticed a port scan was taking place due to the sequential order of the ports. There were several port scans being conducted: 
 
-   **🔎 Detection Query (KQL):**
+**🔎 Detection Query (KQL):**
    ```kql
    let IPInQuestion = "10.0.0.185";
    DeviceNetworkEvents
@@ -64,11 +64,12 @@ DeviceProcessEvents
    ```
    
 
-3. **3️⃣ Network Process Timeline Correlation**
+**3️⃣ Network Process Timeline Correlation**
    - **📄 Suspicious Script Identified: portscan.ps1**
    - **⏰ Timestamp: 2025-04-29T13:32:45.925634Z**
+   - **👤 User: SYSTEM**
 
-   **🔎 Detection Query (KQL):**
+**🔎 Detection Query (KQL):**
 ```kql
 let VMName = "maryanna-vm-mde";
 let specificTime = datetime(2025-04-29T13:32:45.925634Z);
@@ -78,14 +79,16 @@ DeviceProcessEvents
 | order by Timestamp desc
 | project Timestamp, FileName, InitiatingProcessCommandLine
 ```
+**I logged into the suspect computer and observed the PowerShell script that was used to conduct the port scan:**
+
 ![image](https://github.com/user-attachments/assets/d7e03180-2d8c-4edc-a1af-516baa98bf50)
 
 
-5. **4️⃣ Incident Response**
-6. 
-  🔐 Action Taken:
+**4️⃣ Incident Response**
 
--The script executed by SYSTEM, unexpected and unauthorized.
+🔐 Action Taken:
+
+-The script was executed by the SYSTEM account, which was both unexpected and unauthorized.
 
 -The device was isolated from the network.
 
